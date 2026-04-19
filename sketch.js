@@ -290,6 +290,10 @@ function addFrame() {
 function deleteFrame(i) {
   if (frames.length <= 1) return;
   frames[i].remove(); frames.splice(i, 1); undoStacks.splice(i, 1);
+  if (i < refImages.length) {
+    refImages.splice(i, 1);
+    if (refImages.length === 0) hasImages = false;
+  }
   currentFrame = min(currentFrame, frames.length - 1);
 }
 function pushUndo() {
