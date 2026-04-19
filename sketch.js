@@ -15,6 +15,14 @@ let frames = [];
 let undoStacks = [];
 let currentFrame = 0;
 let activeTool = 'pixel';
+let colorIndex = 0; // index into PALETTE
+const PALETTE = [
+  [0,   0,   0  ], // black
+  [255, 255, 255], // white
+  [255, 0,   0  ], // red
+  [0,   255, 0  ], // green
+  [0,   0,   255], // blue
+];
 let eKeyDown = false;
 let ePressTime = 0;
 let hKeyDown = false;
@@ -44,7 +52,7 @@ let fileInput, opacitySlider, fpsOverlay, fpsInput;
 let bgGraphics = null;
 
 // Hit areas — repopulated every frame
-let hitPixelTool = null, hitEraseTool = null;
+let hitColorBtns = [], hitEraseTool = null;
 let hitOnion = null, hitPlay = null, hitPlus = null, hitExport = null;
 let hitClearFrame = null, hitShowGrid = null, hitUpload = null;
 let hitFPS = null;
@@ -78,7 +86,7 @@ function hitInRect(mx, my, r) {
 
 function onUI(mx, my) {
   let hits = [hitClearFrame, hitShowGrid, hitUpload, hitFPS,
-              hitPixelTool, hitEraseTool, hitOnion, hitPlay, hitPlus, hitExport];
+              hitEraseTool, hitOnion, hitPlay, hitPlus, hitExport, ...hitColorBtns];
   for (let h of hits) { if (h && hitInRect(mx, my, h)) return true; }
   for (let i = 0; i < hitFrames.length; i++) {
     if (hitFrames[i]      && hitInRect(mx, my, hitFrames[i]))      return true;
@@ -260,7 +268,7 @@ function _onKeyDown(e) {
     case 'x': case 'X': if (!e.ctrlKey && !e.metaKey) { frames[currentFrame].clear(); pushUndo(); } break;
     case '+': case '=': case 'f': case 'F': addFrame(); break;
     case 'e': case 'E': if (!eKeyDown) { eKeyDown = true; ePressTime = millis(); } break;
-    case 'd': case 'D': activeTool = 'pixel'; break;
+    case 'd': case 'D': activeTool = 'pixel'; break;  // return to draw tool (keeps current colour)
     case 'h': case 'H': hKeyDown = true; break;
   }
 }
@@ -413,7 +421,7 @@ function placePixel() {
     let t = steps === 0 ? 0 : i / steps;
     let xt = round(lerp(x1, x2, t) / PIXEL) * PIXEL, yt = round(lerp(y1, y2, t) / PIXEL) * PIXEL;
     if (erasing) { g.erase(); g.rect(xt, yt, PIXEL, PIXEL); g.noErase(); }
-    else         { g.fill(0); g.rect(xt, yt, PIXEL, PIXEL); }
+    else         { g.fill(...PALETTE[colorIndex]); g.rect(xt, yt, PIXEL, PIXEL); }
   }
 }
 
@@ -503,39 +511,74 @@ function drawTopBar() {
 function drawToolStrip() {
   let tx = canvasOffX - TOOL_W - GAP;
   let y0 = canvasOffY;
-  let y1 = y0 + TOOL_W;
 
-  let ps = activeTool === 'pixel';
-  let ph = !ps && mouseX >= tx && mouseX <= tx + TOOL_W && mouseY >= y0 && mouseY <= y1;
-  hitPixelTool = { x: tx, y: y0, w: TOOL_W, h: TOOL_W };
+  // Build state for all tool buttons (5 colours + eraser)
+  hitColorBtns = [];
+  let toolBtns = [];
 
-  // Pixel tool — always draws its bottom edge; no skip needed at top
-  drawBtn(tx, y0, TOOL_W, TOOL_W, ps, ph, on => {
-    fill(on ? color(...BLUE) : 255); noStroke();
-    let s = 12, cx = tx + TOOL_W / 2, cy = y0 + TOOL_W / 2;
-    rect(cx - s / 2, cy - s / 2, s, s);
-  });
-
-  let es = activeTool === 'erase';
-  let eh = !es && mouseX >= tx && mouseX <= tx + TOOL_W && mouseY >= y1 && mouseY <= y1 + TOOL_W;
-  hitEraseTool = { x: tx, y: y1, w: TOOL_W, h: TOOL_W };
-
-  // 1 px white horizontal divider (only when neither tool is active/hovered)
-  if (!ps && !ph && !es && !eh) {
-    stroke(255); strokeWeight(1);
-    line(floor(tx) + 0.5, floor(y1) + 0.5, floor(tx + TOOL_W) - 0.5, floor(y1) + 0.5);
-    noStroke();
+  for (let i = 0; i < PALETTE.length; i++) {
+    let by  = y0 + i * TOOL_W;
+    let sel = activeTool === 'pixel' && colorIndex === i;
+    let hov = !sel && mouseX >= tx && mouseX <= tx + TOOL_W && mouseY >= by && mouseY <= by + TOOL_W;
+    toolBtns.push({ y: by, active: sel, hov });
+    hitColorBtns[i] = { x: tx, y: by, w: TOOL_W, h: TOOL_W };
   }
 
-  // Erase tool — skips its top edge when the pixel tool above is also on (→ exactly 1 px)
-  let skipTop = (es || eh) && (ps || ph);
-  drawBtn(tx, y1, TOOL_W, TOOL_W, es, eh, on => {
-    stroke(on ? color(...BLUE) : 255); strokeWeight(2);
-    let s = 10, cx = tx + TOOL_W / 2, cy = y1 + TOOL_W / 2;
-    line(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
-    line(cx + s / 2, cy - s / 2, cx - s / 2, cy + s / 2);
+  let ey  = y0 + PALETTE.length * TOOL_W;
+  let es  = activeTool === 'erase';
+  let eh  = !es && mouseX >= tx && mouseX <= tx + TOOL_W && mouseY >= ey && mouseY <= ey + TOOL_W;
+  toolBtns.push({ y: ey, active: es, hov: eh });
+  hitEraseTool = { x: tx, y: ey, w: TOOL_W, h: TOOL_W };
+
+  // Draw colour swatch buttons
+  for (let i = 0; i < PALETTE.length; i++) {
+    let b   = toolBtns[i];
+    let col = PALETTE[i];
+    let prevOn = i > 0 && (toolBtns[i - 1].active || toolBtns[i - 1].hov);
+    let on     = b.active || b.hov;
+    let isBlue  = col[0] === 0   && col[1] === 0   && col[2] === 255;
+    let isWhite = col[0] === 255 && col[1] === 255 && col[2] === 255;
+
+    drawBtn(tx, b.y, TOOL_W, TOOL_W, b.active, b.hov, on2 => {
+      let s = 12, cx2 = tx + TOOL_W / 2, cy2 = b.y + TOOL_W / 2;
+      if (isBlue && !on2) {
+        // Blue square on blue bg → white outline so it's visible
+        noFill(); stroke(255); strokeWeight(1);
+        rect(cx2 - s / 2, cy2 - s / 2, s, s);
+        noStroke();
+      } else if (isWhite && on2) {
+        // White square on white bg → blue outline so it's visible
+        fill(255); noStroke(); rect(cx2 - s / 2, cy2 - s / 2, s, s);
+        noFill(); stroke(...BLUE); strokeWeight(1);
+        rect(floor(cx2 - s / 2) + 0.5, floor(cy2 - s / 2) + 0.5, s - 1, s - 1);
+        noStroke();
+      } else {
+        fill(...col); noStroke(); rect(cx2 - s / 2, cy2 - s / 2, s, s);
+      }
+    }, { top: on && prevOn });
+  }
+
+  // Draw eraser button
+  let eb     = toolBtns[PALETTE.length];
+  let prevOn = toolBtns[PALETTE.length - 1].active || toolBtns[PALETTE.length - 1].hov;
+  let on     = eb.active || eb.hov;
+  drawBtn(tx, ey, TOOL_W, TOOL_W, es, eh, on2 => {
+    stroke(on2 ? color(...BLUE) : 255); strokeWeight(2);
+    let s = 10, cx2 = tx + TOOL_W / 2, cy2 = ey + TOOL_W / 2;
+    line(cx2 - s / 2, cy2 - s / 2, cx2 + s / 2, cy2 + s / 2);
+    line(cx2 + s / 2, cy2 - s / 2, cx2 - s / 2, cy2 + s / 2);
     noStroke();
-  }, { top: skipTop });
+  }, { top: on && prevOn });
+
+  // White 1px horizontal dividers drawn last so they appear on top of button fills
+  stroke(255); strokeWeight(1); noFill();
+  for (let i = 0; i < toolBtns.length - 1; i++) {
+    let a = toolBtns[i], b = toolBtns[i + 1];
+    if ((a.active || a.hov) || (b.active || b.hov)) continue;
+    let divY = floor(a.y + TOOL_W) + 0.5;
+    line(floor(tx) + 0.5, divY, floor(tx + TOOL_W) - 0.5, divY);
+  }
+  noStroke();
 }
 
 // ---- Bottom bar ----
@@ -642,7 +685,12 @@ function drawCursor() {
     line(sx + ps - 2, sy + 2, sx + 2, sy + ps - 2);
     noStroke();
   } else {
-    fill(0); noStroke(); rect(sx, sy, ps, ps);
+    let col = PALETTE[colorIndex];
+    let isWhite = col[0] === 255 && col[1] === 255 && col[2] === 255;
+    fill(...col);
+    if (isWhite) { stroke(...BLUE); strokeWeight(1); } else { noStroke(); }
+    rect(sx, sy, ps, ps);
+    noStroke();
   }
 }
 
@@ -658,8 +706,12 @@ function mousePressed() {
     else           { fileInput.click(); }
     return false;
   }
-  if (hitPixelTool  && hitInRect(mouseX, mouseY, hitPixelTool))  { activeTool = 'pixel'; return false; }
-  if (hitEraseTool  && hitInRect(mouseX, mouseY, hitEraseTool))  { activeTool = 'erase'; return false; }
+  for (let i = 0; i < hitColorBtns.length; i++) {
+    if (hitColorBtns[i] && hitInRect(mouseX, mouseY, hitColorBtns[i])) {
+      activeTool = 'pixel'; colorIndex = i; return false;
+    }
+  }
+  if (hitEraseTool && hitInRect(mouseX, mouseY, hitEraseTool)) { activeTool = 'erase'; return false; }
 
   for (let i = 0; i < hitFrameDelete.length; i++) {
     if (hitFrameDelete[i] && hitInRect(mouseX, mouseY, hitFrameDelete[i])) { deleteFrame(i); return false; }
