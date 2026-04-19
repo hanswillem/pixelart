@@ -16,6 +16,7 @@ let undoStacks = [];
 let currentFrame = 0;
 let activeTool = 'pixel';
 let eKeyDown = false;
+let ePressTime = 0;
 let hKeyDown = false;
 let isPlaying = false;
 let playElapsed = 0;
@@ -258,13 +259,17 @@ function _onKeyDown(e) {
     case 'o': case 'O': showOnionSkin = !showOnionSkin; break;
     case 'x': case 'X': if (!e.ctrlKey && !e.metaKey) { frames[currentFrame].clear(); pushUndo(); } break;
     case '+': case '=': case 'f': case 'F': addFrame(); break;
-    case 'e': case 'E': eKeyDown = true; break;
+    case 'e': case 'E': if (!eKeyDown) { eKeyDown = true; ePressTime = millis(); } break;
+    case 'd': case 'D': activeTool = 'pixel'; break;
     case 'h': case 'H': hKeyDown = true; break;
   }
 }
 
 function _onKeyUp(e) {
-  if (e.key === 'e' || e.key === 'E') eKeyDown = false;
+  if (e.key === 'e' || e.key === 'E') {
+    if (millis() - ePressTime < 250) activeTool = 'erase'; // tap → switch permanently
+    eKeyDown = false;
+  }
   if (e.key === 'h' || e.key === 'H') hKeyDown = false;
 }
 
