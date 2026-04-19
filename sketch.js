@@ -7,7 +7,7 @@ const BTN_H = 45;
 const BTN_PAD = 12;
 const TOOL_W = BTN_H;            // tool buttons are square
 const GAP = 6;                   // gap between canvas and button rows
-const TOP_PAD = 8;               // padding at the very top of the window
+const TOP_PAD = 12;              // padding at the very top of the window
 const FONT = "'Roboto Mono', monospace";
 
 // ---- State ----
