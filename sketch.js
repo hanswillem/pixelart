@@ -28,7 +28,7 @@ let ePressTime = 0;
 let hKeyDown = false;
 let isPlaying = false;
 let playElapsed = 0;
-let fps = 12;
+let fps = 6;
 let fpsFocused = false;
 let showGrid = false;
 let showOnionSkin = false;
@@ -805,7 +805,12 @@ function drawToolStrip() {
           noFill();
           stroke(255);
           strokeWeight(1);
-          rect(floor(cx2 - s / 2) + 0.5, floor(cy2 - s / 2) + 0.5, s - 1, s - 1);
+          rect(
+            floor(cx2 - s / 2) + 0.5,
+            floor(cy2 - s / 2) + 0.5,
+            s - 1,
+            s - 1,
+          );
           noStroke();
         } else if (isWhite && on2) {
           // White square on white bg → blue outline so it's visible
@@ -972,15 +977,19 @@ function drawBottomBar() {
         false,
         b.hov,
         (on2) => {
-          let cx = b.x + b.w / 2,
-            cy = b.y + BTN_H / 2;
           fill(on2 ? color(...BLUE) : 255);
           noStroke();
           if (isPlaying) {
-            rect(cx - 5, cy - 10, 4, 20);
-            rect(cx + 1, cy - 10, 4, 20);
+            // Pause icon — exact geometry from pause.svg
+            rect(b.x + 14, b.y + 12.5, 6, 20);
+            rect(b.x + 24, b.y + 12.5, 6, 20);
           } else {
-            triangle(cx - 8, cy - 11, cx - 8, cy + 11, cx + 10, cy);
+            // Play icon — exact geometry from play.svg
+            triangle(
+              b.x + 14, b.y + 12.1077,
+              b.x + 14, b.y + 32.8923,
+              b.x + 32, b.y + 22.5,
+            );
           }
         },
         { left: on && leftOn },
