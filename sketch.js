@@ -393,8 +393,8 @@ function _onKeyDown(e) {
       break;
     case "d":
     case "D":
-      activeTool = "pixel";
-      break; // return to draw tool (keeps current colour)
+      duplicateFrame(currentFrame);
+      break;
     case "h":
     case "H":
       hKeyDown = true;
@@ -453,6 +453,19 @@ function deleteFrame(i) {
     if (refImages.length === 0) hasImages = false;
   }
   currentFrame = min(currentFrame, frames.length - 1);
+}
+function duplicateFrame(i) {
+  if (frames.length >= 24) return;
+  let src = frames[i];
+  let g = newFrame();
+  g.image(src, 0, 0);
+  frames.splice(i + 1, 0, g);
+  undoStacks.splice(i + 1, 0, [g.get()]);
+  // Duplicate the ref image for this frame too, if one exists
+  if (i < refImages.length) {
+    refImages.splice(i + 1, 0, refImages[i]);
+  }
+  currentFrame = i + 1;
 }
 function pushUndo() {
   let stack = undoStacks[currentFrame];
