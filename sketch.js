@@ -847,7 +847,7 @@ function drawToolStrip() {
     (on2) => {
       stroke(on2 ? color(...BLUE) : 255);
       strokeWeight(2);
-      let s = 10,
+      let s = PIXEL,
         cx2 = tx + TOOL_W / 2,
         cy2 = ey + TOOL_W / 2;
       line(cx2 - s / 2, cy2 - s / 2, cx2 + s / 2, cy2 + s / 2);
