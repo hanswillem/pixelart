@@ -1,7 +1,7 @@
 // ---- Constants ----
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
-const PIXEL = 16;
+const PIXEL = 18;
 const BLUE = [0, 0, 255];
 const BTN_H = 45;
 const BTN_PAD = 12;
@@ -36,8 +36,10 @@ let showOnionSkin = false;
 let gridJustToggled = false;
 let onionJustToggled = false;
 // Pan shifts content inside the fixed canvas. Stored in canvas-space units (multiples of PIXEL).
-let panX = 0, panY = 0;
-let rawPanX = 0, rawPanY = 0;
+let panX = 0,
+  panY = 0;
+let rawPanX = 0,
+  rawPanY = 0;
 let refImages = [];
 let imgOpacity = 255;
 let hasImages = false;
@@ -77,7 +79,8 @@ function computeLayout() {
     (windowWidth - TOOL_TOTAL) / CANVAS_W,
     (windowHeight - TOP_H - BOT_H - TOP_PAD) / CANVAS_H,
   );
-  canvasOffX = TOOL_TOTAL + floor((windowWidth - TOOL_TOTAL - CANVAS_W * sc) / 2);
+  canvasOffX =
+    TOOL_TOTAL + floor((windowWidth - TOOL_TOTAL - CANVAS_W * sc) / 2);
   canvasOffY = TOP_H + TOP_PAD;
 }
 
@@ -415,7 +418,10 @@ function bakePan() {
     undoStacks[i].push(g.get());
     if (undoStacks[i].length > 25) undoStacks[i].shift();
   }
-  panX = 0; panY = 0; rawPanX = 0; rawPanY = 0;
+  panX = 0;
+  panY = 0;
+  rawPanX = 0;
+  rawPanY = 0;
 }
 
 function _onKeyUp(e) {
@@ -423,7 +429,10 @@ function _onKeyUp(e) {
     if (millis() - ePressTime < 250) activeTool = "erase"; // tap → switch permanently
     eKeyDown = false;
   }
-  if (e.key === "h" || e.key === "H") { hKeyDown = false; bakePan(); }
+  if (e.key === "h" || e.key === "H") {
+    hKeyDown = false;
+    bakePan();
+  }
 }
 
 // ---- Frame management ----
@@ -564,11 +573,18 @@ function draw() {
   }
 
   if (!isPlaying && showOnionSkin && currentFrame > 0) {
-    push(); translate(panX, panY); tint(255, 64);
-    image(frames[currentFrame - 1], 0, 0); noTint(); pop();
+    push();
+    translate(panX, panY);
+    tint(255, 64);
+    image(frames[currentFrame - 1], 0, 0);
+    noTint();
+    pop();
   }
 
-  push(); translate(panX, panY); image(frames[currentFrame], 0, 0); pop();
+  push();
+  translate(panX, panY);
+  image(frames[currentFrame], 0, 0);
+  pop();
   pop();
 
   drawingContext.restore();
@@ -781,7 +797,7 @@ function drawToolStrip() {
       b.active,
       b.hov,
       (on2) => {
-        let s = 12,
+        let s = PIXEL,
           cx2 = tx + TOOL_W / 2,
           cy2 = b.y + TOOL_W / 2;
         if (isBlue && !on2) {
@@ -1153,7 +1169,10 @@ async function exportFrames() {
   for (let i = 0; i < frames.length; i++) {
     let tmp = createGraphics(CANVAS_W, CANVAS_H);
     tmp.noSmooth();
-    tmp.push(); tmp.translate(panX, panY); tmp.image(frames[i], 0, 0); tmp.pop();
+    tmp.push();
+    tmp.translate(panX, panY);
+    tmp.image(frames[i], 0, 0);
+    tmp.pop();
     zip.file(
       "frame-" + String(i + 1).padStart(3, "0") + ".png",
       tmp.elt.toDataURL("image/png").split(",")[1],
