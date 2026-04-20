@@ -801,11 +801,11 @@ function drawToolStrip() {
           cx2 = tx + TOOL_W / 2,
           cy2 = b.y + TOOL_W / 2;
         if (isBlue && !on2) {
-          // Blue square on blue bg → white outline so it's visible
+          // Blue square on blue bg → white outline drawn inset so it stays within s×s
           noFill();
           stroke(255);
           strokeWeight(1);
-          rect(cx2 - s / 2, cy2 - s / 2, s, s);
+          rect(floor(cx2 - s / 2) + 0.5, floor(cy2 - s / 2) + 0.5, s - 1, s - 1);
           noStroke();
         } else if (isWhite && on2) {
           // White square on white bg → blue outline so it's visible
@@ -847,11 +847,11 @@ function drawToolStrip() {
     (on2) => {
       stroke(on2 ? color(...BLUE) : 255);
       strokeWeight(2);
-      let s = PIXEL,
+      let s = round(PIXEL * sc),
         cx2 = tx + TOOL_W / 2,
         cy2 = ey + TOOL_W / 2;
-      line(cx2 - s / 2, cy2 - s / 2, cx2 + s / 2, cy2 + s / 2);
-      line(cx2 + s / 2, cy2 - s / 2, cx2 - s / 2, cy2 + s / 2);
+      line(cx2 - s / 2 + 1, cy2 - s / 2 + 1, cx2 + s / 2 - 1, cy2 + s / 2 - 1);
+      line(cx2 + s / 2 - 1, cy2 - s / 2 + 1, cx2 - s / 2 + 1, cy2 + s / 2 - 1);
       noStroke();
     },
     { top: on && prevOn },
@@ -1034,8 +1034,8 @@ function drawCursor() {
     let px = frames[currentFrame].get(snapCX, snapCY);
     stroke(px[3] > 0 ? 255 : 0);
     strokeWeight(2);
-    line(sx + 2, sy + 2, sx + ps - 2, sy + ps - 2);
-    line(sx + ps - 2, sy + 2, sx + 2, sy + ps - 2);
+    line(sx + 1, sy + 1, sx + ps - 1, sy + ps - 1);
+    line(sx + ps - 1, sy + 1, sx + 1, sy + ps - 1);
     noStroke();
   } else {
     let col = PALETTE[colorIndex];
