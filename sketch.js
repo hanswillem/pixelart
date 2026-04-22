@@ -391,6 +391,10 @@ function _onKeyDown(e) {
     case "F":
       addFrame();
       break;
+    case "1": case "2": case "3": case "4": case "5":
+      activeTool = "pixel";
+      colorIndex = parseInt(e.key) - 1;
+      break;
     case "e":
     case "E":
       if (!eKeyDown) {
@@ -1070,17 +1074,9 @@ function drawCursor() {
     line(sx + ps - 1, sy + 1, sx + 1, sy + ps - 1);
     noStroke();
   } else {
-    let col = PALETTE[colorIndex];
-    let isWhite = col[0] === 255 && col[1] === 255 && col[2] === 255;
-    fill(...col);
-    if (isWhite) {
-      stroke(...BLUE);
-      strokeWeight(1);
-    } else {
-      noStroke();
-    }
-    rect(sx, sy, ps, ps);
+    fill(...PALETTE[colorIndex]);
     noStroke();
+    rect(sx, sy, ps, ps);
   }
 }
 
