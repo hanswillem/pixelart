@@ -1,7 +1,7 @@
 // ---- Constants ----
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
-const PIXEL = 18;
+const PIXEL = 15;
 const BLUE = [0, 0, 255];
 const BTN_H = 45;
 const BTN_PAD = 12;
@@ -342,6 +342,13 @@ function _onKeyDown(e) {
     return;
   }
 
+  // Duplicate frame
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+    e.preventDefault();
+    duplicateFrame(currentFrame);
+    return;
+  }
+
   switch (e.key) {
     case "Backspace":
       if (frames.length > 1) {
@@ -393,7 +400,7 @@ function _onKeyDown(e) {
       break;
     case "d":
     case "D":
-      duplicateFrame(currentFrame);
+      activeTool = "pixel";
       break;
     case "h":
     case "H":
@@ -999,9 +1006,12 @@ function drawBottomBar() {
           } else {
             // Play icon — exact geometry from play.svg
             triangle(
-              b.x + 14, b.y + 12.1077,
-              b.x + 14, b.y + 32.8923,
-              b.x + 32, b.y + 22.5,
+              b.x + 14,
+              b.y + 12.1077,
+              b.x + 14,
+              b.y + 32.8923,
+              b.x + 32,
+              b.y + 22.5,
             );
           }
         },
