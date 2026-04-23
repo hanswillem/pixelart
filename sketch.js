@@ -194,27 +194,31 @@ function setup() {
     imgOpacity = map(parseInt(opacitySlider.value), 0, 100, 0, 255);
   });
 
-  // FPS overlay: a flex div that shows [editable number] + [" FPS" label].
-  // White left/right borders restore the 1 px dividers that the overlay would otherwise cover.
+  // FPS overlay: always-visible flex div — never toggled on/off.
+  // Being always present (like Marching Ants' fps-group) avoids text shifts on click.
+  // Canvas skips drawing the FPS button; this overlay owns that slot entirely.
   fpsOverlay = document.createElement("div");
+  fpsOverlay.id = "fps-overlay";
   fpsOverlay.style.cssText = [
-    "display:none",
     "position:absolute",
     "z-index:10",
+    "left:-9999px",
     "background:rgb(0,0,255)",
+    "border-top:1px solid transparent",
+    "border-bottom:1px solid transparent",
     "border-left:1px solid #fff",
     "border-right:1px solid #fff",
     "box-sizing:border-box",
     "display:flex",
     "align-items:center",
     "justify-content:center",
-    "gap:0",
+    "gap:4px",
+    "cursor:pointer",
   ].join(";");
-  // Re-apply display:none after the conflicting display:flex above
-  fpsOverlay.style.display = "none";
   document.body.appendChild(fpsOverlay);
 
   fpsInput = document.createElement("input");
+  fpsInput.id = "fps-input";
   fpsInput.type = "text";
   fpsInput.maxLength = 2;
   fpsInput.style.cssText = [
@@ -230,20 +234,34 @@ function setup() {
     "width:2ch",
     "text-align:right",
     "min-width:0",
+    "-webkit-appearance:none",
+    "appearance:none",
   ].join(";");
   fpsOverlay.appendChild(fpsInput);
 
   let fpsSuffix = document.createElement("span");
   fpsSuffix.textContent = "\u2009FPS"; // thin-space + FPS to match " FPS" label spacing
+  fpsSuffix.id = "fps-suffix";
+  fpsSuffix.textContent = "FPS";
+  // (the " FPS" line above is superseded by this assignment — JS last-write wins)
   fpsSuffix.style.cssText = [
     "color:#ffffff",
     "font-family:'Roboto Mono',monospace",
     "font-size:12px",
     "pointer-events:none",
     "user-select:none",
-    "white-space:pre",
   ].join(";");
   fpsOverlay.appendChild(fpsSuffix);
+
+  // Hover and focus-within styles — mirrors the Marching Ants fps-group CSS.
+  const fpsStyle = document.createElement("style");
+  fpsStyle.textContent = [
+    "#fps-overlay:hover { background:#ffffff !important; border-top-color:rgb(0,0,255) !important; border-bottom-color:rgb(0,0,255) !important; }",
+    "#fps-overlay:hover #fps-input, #fps-overlay:hover #fps-suffix { color:rgb(0,0,255) !important; caret-color:rgb(0,0,255) !important; }",
+    "#fps-overlay:focus-within { background:rgb(0,0,255) !important; border-top-color:transparent !important; border-bottom-color:transparent !important; }",
+    "#fps-overlay:focus-within #fps-input, #fps-overlay:focus-within #fps-suffix { color:#ffffff !important; caret-color:#ffffff !important; }",
+  ].join("\n");
+  document.head.appendChild(fpsStyle);
 
   fpsInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === "Escape") {
@@ -279,7 +297,6 @@ function setup() {
 function commitFPS() {
   let v = parseInt(fpsInput.value);
   if (!isNaN(v) && v >= 1 && v <= 24) fps = v;
-  fpsOverlay.style.display = "none";
   fpsFocused = false;
 }
 
@@ -536,13 +553,15 @@ function textBtn(x, y, w, h, label, active, hovered, skip) {
 
 // White 1 px dividers between adjacent non-active, non-hovered buttons.
 // Integer-snapped (+0.5) for crisp pixel-centre rendering.
-function drawDividers(btns, vertical) {
+// skipRefs: button refs whose adjacencies are owned by an HTML overlay.
+function drawDividers(btns, vertical, skipRefs = []) {
   stroke(255);
   strokeWeight(1);
   noFill();
   for (let i = 0; i < btns.length - 1; i++) {
     let a = btns[i],
       b = btns[i + 1];
+    if (skipRefs.includes(a.ref) || skipRefs.includes(b.ref)) continue;
     if (a.active || a.hov || b.active || b.hov) continue;
     if (vertical) {
       let divY = floor(a.y + BTN_H) + 0.5;
@@ -915,10 +934,11 @@ function drawBottomBar() {
     active: showOnionSkin,
     ref: "onion",
   });
-  // FPS button always rendered inactive — HTML input covers it when focused.
+  // FPS button width tracks the live input value while typing so the button resizes in real time.
+  let fpsDisplayVal = (fpsFocused && fpsInput.value) ? fpsInput.value : str(fps);
   btns.push({
-    label: str(fps) + " FPS",
-    w: ceil(textWidth("00 FPS") + BTN_PAD * 2),
+    label: fpsDisplayVal + " FPS",
+    w: ceil(textWidth(fpsDisplayVal + " FPS") + BTN_PAD * 2),
     active: false,
     ref: "fps",
   });
@@ -970,13 +990,22 @@ function drawBottomBar() {
     if (b.ref === "onion") hitOnion = { x: b.x, y: by, w: b.w, h: BTN_H };
     if (b.ref === "fps") {
       hitFPS = { x: b.x, y: by, w: b.w, h: BTN_H };
-      // Keep the HTML input aligned when the window is resized while editing.
-      if (fpsFocused) {
-        fpsOverlay.style.left = hitFPS.x + "px";
-        fpsOverlay.style.top = hitFPS.y + "px";
-        fpsOverlay.style.width = hitFPS.w + "px";
-        fpsOverlay.style.height = hitFPS.h + "px";
-      }
+      fpsOverlay.style.left = hitFPS.x + "px";
+      fpsOverlay.style.top = hitFPS.y + "px";
+      fpsOverlay.style.width = hitFPS.w + "px";
+      fpsOverlay.style.height = hitFPS.h + "px";
+      if (!fpsFocused) fpsInput.value = str(fps);
+      fpsInput.style.width = Math.max(1, fpsInput.value.length) + "ch";
+      // Set border colors each frame to avoid double-border with canvas-drawn neighbor borders.
+      // Border-color is NOT set via CSS (no !important), so JS inline wins.
+      let fpsIdx = btns.indexOf(b);
+      let leftNeighbor = fpsIdx > 0 ? btns[fpsIdx - 1] : null;
+      let rightNeighbor = fpsIdx < btns.length - 1 ? btns[fpsIdx + 1] : null;
+      let leftOn = leftNeighbor && (leftNeighbor.active || leftNeighbor.hov);
+      let rightOn = rightNeighbor && (rightNeighbor.hov);
+      let fpsHov = b.hov && !fpsFocused; // when focused, :focus-within wins over :hover → keep borders white
+      fpsOverlay.style.borderLeftColor  = (fpsHov || leftOn)  ? "rgb(0,0,255)" : "#fff";
+      fpsOverlay.style.borderRightColor = (fpsHov || rightOn) ? "rgb(0,0,255)" : "#fff";
     }
     if (b.ref === "play") hitPlay = { x: b.x, y: by, w: b.w, h: BTN_H };
     if (b.ref === "plus") hitPlus = { x: b.x, y: by, w: b.w, h: BTN_H };
@@ -991,6 +1020,8 @@ function drawBottomBar() {
 
   for (let i = 0; i < btns.length; i++) {
     let b = btns[i];
+    if (b.ref === "fps") continue; // overlay handles this slot entirely
+
     let on = b.active || b.hov;
     let leftOn = i > 0 && (btns[i - 1].active || btns[i - 1].hov);
 
@@ -1030,7 +1061,7 @@ function drawBottomBar() {
     }
   }
 
-  drawDividers(btns, false);
+  drawDividers(btns, false, ["fps"]);
 
   // Frame delete × — inside top-right corner of the frame button, shown on hover
   for (let i = 0; i < frames.length; i++) {
@@ -1128,16 +1159,8 @@ function mousePressed() {
   if (hitFPS && hitInRect(mouseX, mouseY, hitFPS)) {
     fpsFocused = true;
     fpsInput.value = str(fps);
-    fpsOverlay.style.display = "flex";
-    fpsOverlay.style.left = hitFPS.x + "px";
-    fpsOverlay.style.top = hitFPS.y + "px";
-    fpsOverlay.style.width = hitFPS.w + "px";
-    fpsOverlay.style.height = hitFPS.h + "px";
     // Defer focus so p5's mousePressed return value doesn't steal it back.
-    setTimeout(() => {
-      fpsInput.focus();
-      fpsInput.select();
-    }, 0);
+    setTimeout(() => { fpsInput.focus(); fpsInput.select(); }, 0);
     return false;
   }
   if (hitOnion && hitInRect(mouseX, mouseY, hitOnion)) {
