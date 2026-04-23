@@ -8,6 +8,8 @@ const BTN_PAD = 12;
 const TOOL_W = BTN_H; // tool buttons are square
 const GAP = 6; // gap between canvas and button rows
 const TOP_PAD = 12; // padding at the very top of the window
+const SIDE_PAD = 24; // padding on the right side of the window
+const BOT_PAD = 24; // padding at the bottom of the window
 const FONT = "'Roboto Mono', monospace";
 
 // ---- State ----
@@ -76,11 +78,11 @@ function computeLayout() {
   let BOT_H = BTN_H + GAP;
   sc = min(
     1,
-    (windowWidth - TOOL_TOTAL) / CANVAS_W,
-    (windowHeight - TOP_H - BOT_H - TOP_PAD) / CANVAS_H,
+    (windowWidth - SIDE_PAD - TOOL_TOTAL - SIDE_PAD) / CANVAS_W,
+    (windowHeight - TOP_H - BOT_H - TOP_PAD - BOT_PAD) / CANVAS_H,
   );
   canvasOffX =
-    TOOL_TOTAL + floor((windowWidth - TOOL_TOTAL - CANVAS_W * sc) / 2);
+    SIDE_PAD + TOOL_TOTAL + floor((windowWidth - SIDE_PAD * 2 - TOOL_TOTAL - CANVAS_W * sc) / 2);
   canvasOffY = TOP_H + TOP_PAD;
 }
 
