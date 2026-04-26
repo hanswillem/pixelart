@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__d3878582-c2a3-42ed-b968-28020b8850bf__notion-update-page",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

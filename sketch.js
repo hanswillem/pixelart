@@ -380,10 +380,10 @@ function _onKeyDown(e) {
       }
       break;
     case "ArrowLeft":
-      currentFrame = max(0, currentFrame - 1);
+      currentFrame = (currentFrame - 1 + frames.length) % frames.length;
       break;
     case "ArrowRight":
-      currentFrame = min(frames.length - 1, currentFrame + 1);
+      currentFrame = (currentFrame + 1) % frames.length;
       break;
     case " ":
       isPlaying = !isPlaying;
@@ -504,11 +504,12 @@ function pushUndo() {
 }
 
 // ---- Button drawing ----
-// skip = { left: bool, top: bool }
+// skip = { left: bool, right: bool, top: bool }
 // The rule that gives exactly 1 px at every active-to-active junction:
 //   • Always draw the right edge (bottom edge for vertical stacks).
 //   • Suppress the left edge (top edge) when the neighbour on that side is also on.
 // The neighbour therefore never needs to suppress its own right/bottom edge.
+//   • Suppress the right edge only when an HTML overlay owns that shared edge.
 function drawBtn(x, y, w, h, active, hovered, drawContent, skip) {
   let on = active || hovered;
   noStroke();
@@ -525,7 +526,7 @@ function drawBtn(x, y, w, h, active, hovered, drawContent, skip) {
     if (!skip?.top) line(lx, ty2, rx, ty2); // top  (skip when vertical neighbour above is on)
     line(lx, by2, rx, by2); // bottom — always draw
     if (!skip?.left) line(lx, ty2, lx, by2); // left  (skip when horizontal neighbour left is on)
-    line(rx, ty2, rx, by2); // right — always draw
+    if (!skip?.right) line(rx, ty2, rx, by2); // right — usually always drawn
     noStroke();
   }
   if (drawContent) drawContent(on);
@@ -1024,6 +1025,7 @@ function drawBottomBar() {
 
     let on = b.active || b.hov;
     let leftOn = i > 0 && (btns[i - 1].active || btns[i - 1].hov);
+    let rightOwnedByFPS = i < btns.length - 1 && btns[i + 1].ref === "fps";
 
     if (b.ref === "play") {
       drawBtn(
@@ -1052,11 +1054,12 @@ function drawBottomBar() {
             );
           }
         },
-        { left: on && leftOn },
+        { left: on && leftOn, right: on && rightOwnedByFPS },
       );
     } else {
       textBtn(b.x, b.y, b.w, BTN_H, b.label, b.active, b.hov && !b.active, {
         left: on && leftOn,
+        right: on && rightOwnedByFPS,
       });
     }
   }
