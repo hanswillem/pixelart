@@ -380,9 +380,13 @@ function _onKeyDown(e) {
       }
       break;
     case "ArrowLeft":
+    case "a":
+    case "A":
       currentFrame = (currentFrame - 1 + frames.length) % frames.length;
       break;
     case "ArrowRight":
+    case "d":
+    case "D":
       currentFrame = (currentFrame + 1) % frames.length;
       break;
     case " ":
@@ -420,10 +424,6 @@ function _onKeyDown(e) {
         eKeyDown = true;
         ePressTime = millis();
       }
-      break;
-    case "d":
-    case "D":
-      activeTool = "pixel";
       break;
     case "h":
     case "H":
