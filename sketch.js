@@ -82,7 +82,9 @@ function computeLayout() {
     (windowHeight - TOP_H - BOT_H - TOP_PAD - BOT_PAD) / CANVAS_H,
   );
   canvasOffX =
-    SIDE_PAD + TOOL_TOTAL + floor((windowWidth - SIDE_PAD * 2 - TOOL_TOTAL - CANVAS_W * sc) / 2);
+    SIDE_PAD +
+    TOOL_TOTAL +
+    floor((windowWidth - SIDE_PAD * 2 - TOOL_TOTAL - CANVAS_W * sc) / 2);
   canvasOffY = TOP_H + TOP_PAD;
 }
 
@@ -414,7 +416,11 @@ function _onKeyDown(e) {
     case "F":
       addFrame();
       break;
-    case "1": case "2": case "3": case "4": case "5":
+    case "1":
+    case "2":
+    case "3":
+    case "4":
+    case "5":
       activeTool = "pixel";
       colorIndex = parseInt(e.key) - 1;
       break;
@@ -432,8 +438,33 @@ function _onKeyDown(e) {
   }
 }
 
+function wrappedOffsets(offset, size) {
+  let wrapped = ((offset % size) + size) % size;
+  return wrapped === 0 ? [0] : [wrapped, wrapped - size];
+}
+
+function drawWrappedImage(img, x, y) {
+  let xs = wrappedOffsets(x, CANVAS_W);
+  let ys = wrappedOffsets(y, CANVAS_H);
+  for (let ox of xs) {
+    for (let oy of ys) {
+      image(img, ox, oy);
+    }
+  }
+}
+
+function drawWrappedImageTo(target, img, x, y) {
+  let xs = wrappedOffsets(x, CANVAS_W);
+  let ys = wrappedOffsets(y, CANVAS_H);
+  for (let ox of xs) {
+    for (let oy of ys) {
+      target.image(img, ox, oy);
+    }
+  }
+}
+
 // Commit the current pan into every frame's pixels, then reset pan to zero.
-// Whatever slid off the canvas edge is clipped — content stays where it visually was.
+// Pixels that move past a canvas edge wrap around to the opposite edge.
 // After baking, drawing always works across the full 1920×1080 area.
 function bakePan() {
   if (panX === 0 && panY === 0) return;
@@ -441,7 +472,7 @@ function bakePan() {
     let g = frames[i];
     let tmp = createGraphics(CANVAS_W, CANVAS_H);
     tmp.noSmooth();
-    tmp.image(g, panX, panY);
+    drawWrappedImageTo(tmp, g, panX, panY);
     g.clear();
     g.image(tmp, 0, 0);
     tmp.remove();
@@ -620,16 +651,14 @@ function draw() {
 
   if (!isPlaying && showOnionSkin && currentFrame > 0) {
     push();
-    translate(panX, panY);
     tint(255, 64);
-    image(frames[currentFrame - 1], 0, 0);
+    drawWrappedImage(frames[currentFrame - 1], panX, panY);
     noTint();
     pop();
   }
 
   push();
-  translate(panX, panY);
-  image(frames[currentFrame], 0, 0);
+  drawWrappedImage(frames[currentFrame], panX, panY);
   pop();
   pop();
 
@@ -936,7 +965,7 @@ function drawBottomBar() {
     ref: "onion",
   });
   // FPS button width tracks the live input value while typing so the button resizes in real time.
-  let fpsDisplayVal = (fpsFocused && fpsInput.value) ? fpsInput.value : str(fps);
+  let fpsDisplayVal = fpsFocused && fpsInput.value ? fpsInput.value : str(fps);
   btns.push({
     label: fpsDisplayVal + " FPS",
     w: ceil(textWidth(fpsDisplayVal + " FPS") + BTN_PAD * 2),
@@ -1003,10 +1032,12 @@ function drawBottomBar() {
       let leftNeighbor = fpsIdx > 0 ? btns[fpsIdx - 1] : null;
       let rightNeighbor = fpsIdx < btns.length - 1 ? btns[fpsIdx + 1] : null;
       let leftOn = leftNeighbor && (leftNeighbor.active || leftNeighbor.hov);
-      let rightOn = rightNeighbor && (rightNeighbor.hov);
+      let rightOn = rightNeighbor && rightNeighbor.hov;
       let fpsHov = b.hov && !fpsFocused; // when focused, :focus-within wins over :hover → keep borders white
-      fpsOverlay.style.borderLeftColor  = (fpsHov || leftOn)  ? "rgb(0,0,255)" : "#fff";
-      fpsOverlay.style.borderRightColor = (fpsHov || rightOn) ? "rgb(0,0,255)" : "#fff";
+      fpsOverlay.style.borderLeftColor =
+        fpsHov || leftOn ? "rgb(0,0,255)" : "#fff";
+      fpsOverlay.style.borderRightColor =
+        fpsHov || rightOn ? "rgb(0,0,255)" : "#fff";
     }
     if (b.ref === "play") hitPlay = { x: b.x, y: by, w: b.w, h: BTN_H };
     if (b.ref === "plus") hitPlus = { x: b.x, y: by, w: b.w, h: BTN_H };
@@ -1163,7 +1194,10 @@ function mousePressed() {
     fpsFocused = true;
     fpsInput.value = str(fps);
     // Defer focus so p5's mousePressed return value doesn't steal it back.
-    setTimeout(() => { fpsInput.focus(); fpsInput.select(); }, 0);
+    setTimeout(() => {
+      fpsInput.focus();
+      fpsInput.select();
+    }, 0);
     return false;
   }
   if (hitOnion && hitInRect(mouseX, mouseY, hitOnion)) {
@@ -1225,10 +1259,7 @@ async function exportFrames() {
   for (let i = 0; i < frames.length; i++) {
     let tmp = createGraphics(CANVAS_W, CANVAS_H);
     tmp.noSmooth();
-    tmp.push();
-    tmp.translate(panX, panY);
-    tmp.image(frames[i], 0, 0);
-    tmp.pop();
+    drawWrappedImageTo(tmp, frames[i], panX, panY);
     zip.file(
       "frame-" + String(i + 1).padStart(3, "0") + ".png",
       tmp.elt.toDataURL("image/png").split(",")[1],
